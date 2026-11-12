@@ -27,13 +27,7 @@ export default function Home() {
           </div>
           <LoginForm />
           <p className="mt-5 text-center text-sm text-zinc-500">
-            New here?{" "}
-            <a
-              href="/signup"
-              className="font-semibold text-zinc-950 underline underline-offset-4"
-            >
-              Create an account
-            </a>
+            Need access? Contact your programme administrator.
           </p>
         </div>
 
