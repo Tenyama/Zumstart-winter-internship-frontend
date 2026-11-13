@@ -12,11 +12,20 @@ import {
   type ProgramStatus,
   type RoundingMode,
 } from "@/lib/api/programs";
-import { getAccessToken, getAuthContext } from "@/lib/auth/auth-context";
+import {
+  getAuthContext,
+  type AuthContext,
+} from "@/lib/auth/auth-context";
 
 export type ProgramFormState = {
   error?: string;
 };
+
+const PROGRAM_MANAGER_ROLES = new Set(["owner", "admin"]);
+
+function canManageProgram(auth: AuthContext | null): auth is AuthContext {
+  return Boolean(auth?.role && PROGRAM_MANAGER_ROLES.has(auth.role.toLowerCase()));
+}
 
 const ROUNDING_MODES: RoundingMode[] = [
   "ROUND_DOWN",
@@ -128,13 +137,8 @@ export async function saveProgram(
   formData: FormData
 ): Promise<ProgramFormState> {
   const auth = await getAuthContext();
-  if (!auth) {
-    return { error: "No merchant access." };
-  }
-
-  const accessToken = await getAccessToken();
-  if (!accessToken) {
-    return { error: "Your session has expired. Sign in again." };
+  if (!canManageProgram(auth)) {
+    return { error: "Only an owner or admin can change the rewards program." };
   }
 
   const parsed = parseProgramForm(formData);
@@ -148,9 +152,9 @@ export async function saveProgram(
       if (!current || current.program_id !== programId) {
         return { error: "Program not found." };
       }
-      await updateProgram(programId, parsed.payload, accessToken);
+      await updateProgram(programId, parsed.payload);
     } else {
-      await createProgram(auth.merchantId, parsed.payload, accessToken);
+      await createProgram(auth.merchantId, parsed.payload);
     }
   } catch (error) {
     console.error("Could not save the loyalty program:", error);
@@ -168,16 +172,9 @@ export async function saveProgram(
 
 export async function toggleProgramStatus(formData: FormData) {
   const auth = await getAuthContext();
-  if (!auth) {
+  if (!canManageProgram(auth)) {
     redirect(
-      `/program?error=${encodeURIComponent("No merchant access.")}`
-    );
-  }
-
-  const accessToken = await getAccessToken();
-  if (!accessToken) {
-    redirect(
-      `/program?error=${encodeURIComponent("Your session has expired. Sign in again.")}`
+      `/program?error=${encodeURIComponent("Only an owner or admin can change the rewards program.")}`
     );
   }
 
@@ -205,7 +202,7 @@ export async function toggleProgramStatus(formData: FormData) {
   }
 
   try {
-    await updateProgramStatus(programId, status, accessToken);
+    await updateProgramStatus(programId, status);
   } catch (error) {
     console.error("Could not update the loyalty program status:", error);
     const message =

@@ -29,84 +29,90 @@ export type ProgramPayload = Pick<
   | "terms_conditions"
 >;
 
-type ProgramConfig = {
-  apiUrl: string;
-  apiKey?: string;
-};
-
-function getProgramConfig(): ProgramConfig {
-  const apiUrl = process.env.API_URL;
-  const apiKey = process.env.INTERNAL_API_KEY;
-
-  if (!apiUrl) {
+function getApiUrl(): string {
+  const raw = process.env.API_URL;
+  if (!raw) {
     throw new Error("Missing API_URL. Add it to frontend/.env.local.");
   }
 
-  return {
-    apiUrl: apiUrl.replace(/\/$/, ""),
-    apiKey: apiKey || undefined,
-  };
-}
+  const trimmed = raw.trim().replace(/\/+$/, "");
+  const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)
+    ? trimmed
+    : `https://${trimmed}`;
 
-function apiHeaders(
-  config: ProgramConfig,
-  accessToken?: string,
-  json = false
-): Record<string, string> {
-  const headers: Record<string, string> = {};
-  if (json) headers["Content-Type"] = "application/json";
-  if (config.apiKey) headers["X-API-Key"] = config.apiKey;
-  if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
-  return headers;
+  try {
+    return new URL(withScheme).origin;
+  } catch {
+    throw new Error(
+      "API_URL must be a valid absolute URL, for example https://your-backend.vercel.app"
+    );
+  }
 }
 
 async function readError(response: Response): Promise<string> {
-  try {
-    const body = await response.json();
-    const detail = body?.detail;
+  const contentType = response.headers.get("content-type") ?? "";
+  const text = await response.text();
 
-    if (typeof detail === "string") return detail;
+  if (contentType.includes("application/json")) {
+    try {
+      const body = JSON.parse(text);
+      const detail = body?.detail;
 
-    if (Array.isArray(detail)) {
-      return detail
-        .map((item) => {
-          const field = Array.isArray(item.loc)
-            ? item.loc[item.loc.length - 1]
-            : "";
-          return `${field ? `${field}: ` : ""}${item.msg ?? "Invalid value"}`;
-        })
-        .join("; ");
+      if (typeof detail === "string") return detail;
+
+      if (Array.isArray(detail)) {
+        return detail
+          .map((item) => {
+            const field = Array.isArray(item.loc)
+              ? item.loc[item.loc.length - 1]
+              : "";
+            return `${field ? `${field}: ` : ""}${item.msg ?? "Invalid value"}`;
+          })
+          .join("; ");
+      }
+    } catch {
+      // Fall through to the status message.
     }
-  } catch {
-    // Fall through to the status message.
+  }
+
+  if (text.trimStart().startsWith("<")) {
+    return `The rewards API returned HTML instead of JSON (${response.status}). Check API_URL and Vercel Deployment Protection.`;
   }
 
   return `The rewards API returned ${response.status}.`;
 }
 
+async function readJson<T>(response: Response): Promise<T> {
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) {
+    throw new Error(
+      "The rewards API returned a non-JSON response. Check API_URL and Vercel Deployment Protection."
+    );
+  }
+
+  return response.json();
+}
+
 export async function getProgram(
   merchantId: string
 ): Promise<LoyaltyProgram | null> {
-  const config = getProgramConfig();
   const response = await fetch(
-    `${config.apiUrl}/loyalty-programs/merchants/${merchantId}`,
-    { cache: "no-store", headers: apiHeaders(config) }
+    `${getApiUrl()}/loyalty-programs/merchants/${merchantId}`,
+    { cache: "no-store" }
   );
 
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(await readError(response));
-  return response.json();
+  return readJson<LoyaltyProgram>(response);
 }
 
 export async function createProgram(
   merchantId: string,
-  payload: ProgramPayload,
-  accessToken: string
+  payload: ProgramPayload
 ): Promise<LoyaltyProgram> {
-  const config = getProgramConfig();
-  const response = await fetch(`${config.apiUrl}/loyalty-programs`, {
+  const response = await fetch(`${getApiUrl()}/loyalty-programs`, {
     method: "POST",
-    headers: apiHeaders(config, accessToken, true),
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       ...payload,
       merchant_id: merchantId,
@@ -116,45 +122,41 @@ export async function createProgram(
   });
 
   if (!response.ok) throw new Error(await readError(response));
-  return response.json();
+  return readJson<LoyaltyProgram>(response);
 }
 
 export async function updateProgram(
   programId: string,
-  payload: ProgramPayload,
-  accessToken: string
+  payload: ProgramPayload
 ): Promise<LoyaltyProgram> {
-  const config = getProgramConfig();
   const response = await fetch(
-    `${config.apiUrl}/loyalty-programs/${programId}`,
+    `${getApiUrl()}/loyalty-programs/${programId}`,
     {
       method: "PATCH",
-      headers: apiHeaders(config, accessToken, true),
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
       cache: "no-store",
     }
   );
 
   if (!response.ok) throw new Error(await readError(response));
-  return response.json();
+  return readJson<LoyaltyProgram>(response);
 }
 
 export async function updateProgramStatus(
   programId: string,
-  status: ProgramStatus,
-  accessToken: string
+  status: ProgramStatus
 ): Promise<LoyaltyProgram> {
-  const config = getProgramConfig();
   const response = await fetch(
-    `${config.apiUrl}/loyalty-programs/${programId}`,
+    `${getApiUrl()}/loyalty-programs/${programId}`,
     {
       method: "PATCH",
-      headers: apiHeaders(config, accessToken, true),
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
       cache: "no-store",
     }
   );
 
   if (!response.ok) throw new Error(await readError(response));
-  return response.json();
+  return readJson<LoyaltyProgram>(response);
 }

@@ -33,9 +33,3 @@ export const getAuthContext = cache(async (): Promise<AuthContext | null> => {
     staffUserId: typeof staffUserId === "string" ? staffUserId : null,
   };
 });
-
-export async function getAccessToken(): Promise<string | null> {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? null;
-}

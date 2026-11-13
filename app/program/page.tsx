@@ -34,6 +34,21 @@ export default async function ProgramPage({ searchParams }: ProgramPageProps) {
     );
   }
 
+  if (!auth.role || !["owner", "admin"].includes(auth.role.toLowerCase())) {
+    return (
+      <div className="mx-auto max-w-5xl">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-6">
+          <h1 className="text-lg font-semibold text-amber-900">
+            Rewards access required
+          </h1>
+          <p className="mt-2 text-sm leading-6 text-amber-800">
+            Only an owner or admin can configure the rewards program.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   let program: LoyaltyProgram | null = null;
   let loadError: string | null = null;
 
@@ -63,7 +78,7 @@ export default async function ProgramPage({ searchParams }: ProgramPageProps) {
           </h1>
         </div>
         <span className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-medium text-zinc-600">
-          Brand: Zumwhere
+          Program: {program?.name ?? "Not configured"}
         </span>
       </div>
 
