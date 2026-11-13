@@ -38,10 +38,10 @@ export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
   if ((path === "/" || path === "/signup") && isAuthenticated) {
-    return NextResponse.redirect(new URL("/welcome", request.url));
+    return NextResponse.redirect(new URL("/program", request.url));
   }
 
-  if (path.startsWith("/welcome") && !isAuthenticated) {
+  if (path.startsWith("/program") && !isAuthenticated) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
@@ -49,5 +49,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/signup", "/welcome/:path*"],
+  matcher: ["/", "/signup", "/program/:path*"],
 };

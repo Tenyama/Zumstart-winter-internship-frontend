@@ -1,7 +1,5 @@
 import Link from "next/link";
 
-import { SignUpForm } from "./signup-form";
-
 export default function SignUpPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-zinc-100 px-4 py-10">
@@ -19,15 +17,13 @@ export default function SignUpPage() {
         </div>
 
         <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8">
-          <div className="mb-6 space-y-1.5">
-            <h1 className="text-2xl font-semibold tracking-tight text-zinc-950">
-              Create account
-            </h1>
-            <p className="text-sm leading-6 text-zinc-500">
-              Choose a username and password for your rewards account.
-            </p>
-          </div>
-          <SignUpForm />
+          <h1 className="text-2xl font-semibold tracking-tight text-zinc-950">
+            Accounts are created by an administrator
+          </h1>
+          <p className="mt-3 text-sm leading-6 text-zinc-500">
+            Back-office access is provisioned by the programme administrator.
+            Ask them to create your staff account and link it to your merchant.
+          </p>
           <p className="mt-5 text-center text-sm text-zinc-500">
             Already have an account?{" "}
             <Link
